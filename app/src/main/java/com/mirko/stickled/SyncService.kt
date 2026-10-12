@@ -94,21 +94,27 @@ class SyncService : Service() {
             val w = img.width
             val h = img.height
             val half = w / 2
-            val sum = LongArray(6)
+            val sum = LongArray(8) // per half: r, g, b weighted by colourfulness, then total weight
             for (y in 0 until h) {
                 val row = y * plane.rowStride
                 for (x in 0 until w) {
                     val i = row + x * 4
-                    val o = if (x < half) 0 else 3
-                    sum[o] += (buf.get(i).toInt() and 0xff).toLong()
-                    sum[o + 1] += (buf.get(i + 1).toInt() and 0xff).toLong()
-                    sum[o + 2] += (buf.get(i + 2).toInt() and 0xff).toLong()
+                    val r = buf.get(i).toInt() and 0xff
+                    val g = buf.get(i + 1).toInt() and 0xff
+                    val bl = buf.get(i + 2).toInt() and 0xff
+                    // Vivid pixels count far more than grey ones, otherwise every scene averages to mud.
+                    val chroma = maxOf(r, g, bl) - minOf(r, g, bl)
+                    val wt = 1L + chroma * chroma / 16
+                    val o = if (x < half) 0 else 4
+                    sum[o] += r * wt
+                    sum[o + 1] += g * wt
+                    sum[o + 2] += bl * wt
+                    sum[o + 3] += wt
                 }
             }
-            val n = (half * h).coerceAtLeast(1)
             // Smooth (EMA) so the LEDs do not flicker between frames.
-            left = smooth(left, boost(sum[0] / n, sum[1] / n, sum[2] / n))
-            right = smooth(right, boost(sum[3] / n, sum[4] / n, sum[5] / n))
+            left = smooth(left, boost(sum[0] / sum[3], sum[1] / sum[3], sum[2] / sum[3]))
+            right = smooth(right, boost(sum[4] / sum[7], sum[5] / sum[7], sum[6] / sum[7]))
             val (a, b) = if (swap) right to left else left to right
             if (a == lastLeft && b == lastRight) return
             lastLeft = a
@@ -136,12 +142,12 @@ class SyncService : Service() {
         false
     }
 
-    /** Average colours look washed out on LEDs: push saturation and brightness up. */
+    /** LEDs look dull with true colours: double the saturation and lift the brightness (sqrt curve). */
     private fun boost(r: Long, g: Long, b: Long): Int {
         val hsv = FloatArray(3)
         Color.RGBToHSV(r.toInt(), g.toInt(), b.toInt(), hsv)
-        hsv[1] = (hsv[1] * 1.4f).coerceAtMost(1f)
-        hsv[2] = (hsv[2] * 1.5f).coerceAtMost(1f)
+        hsv[1] = (hsv[1] * 2f).coerceAtMost(1f)
+        hsv[2] = Math.sqrt(hsv[2].toDouble()).toFloat()
         return Color.HSVToColor(hsv)
     }
 
