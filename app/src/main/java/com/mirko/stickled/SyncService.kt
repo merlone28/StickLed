@@ -14,9 +14,11 @@ import android.hardware.display.VirtualDisplay
 import android.media.ImageReader
 import android.media.projection.MediaProjection
 import android.media.projection.MediaProjectionManager
+import android.os.Build
 import android.os.Handler
 import android.os.HandlerThread
 import android.os.IBinder
+import android.os.Parcel
 import android.provider.Settings
 import android.widget.Toast
 import java.io.FileOutputStream
@@ -29,6 +31,14 @@ class SyncService : Service() {
     private var display: VirtualDisplay? = null
     private var reader: ImageReader? = null
     private var thread: HandlerThread? = null
+    private val viaService = mutableSetOf<String>()
+    private val thor = Build.MANUFACTURER.lowercase().contains("ayn") && Build.MODEL.lowercase().contains("thor")
+    private val pServer: IBinder? by lazy {
+        runCatching {
+            val sm = Class.forName("android.os.ServiceManager")
+            sm.getDeclaredMethod("getService", String::class.java).invoke(sm, "PServerBinder") as? IBinder
+        }.getOrNull()
+    }
     private var level = 1f
     private var lastLeft = -1
     private var lastRight = -1
@@ -52,7 +62,9 @@ class SyncService : Service() {
 
         // Same brightness the user chose in the Odin settings (0..1).
         level = Settings.System.getString(contentResolver, KEY_LEVEL)?.toFloatOrNull()?.coerceIn(0f, 1f) ?: 1f
-        if (!write(LEFT, "enable", "1") || !write(RIGHT, "enable", "1")) {
+        // The right stick is optional: some consoles (Retroid Pocket Mini) only have the left LED.
+        write(RIGHT, "enable", "1")
+        if (!write(LEFT, "enable", "1")) {
             Toast.makeText(this, "Impossibile controllare i LED su questo dispositivo", Toast.LENGTH_LONG).show()
             stopSelf()
             return START_NOT_STICKY
@@ -133,13 +145,39 @@ class SyncService : Service() {
         val g = (Color.green(color) * level).toInt()
         val b = (Color.blue(color) * level).toInt()
         write(side, "brightness", "1-$r:$g:$b")
+        // AYN Thor has two LED zones per stick.
+        if (thor) write(side, "brightness", "2-$r:$g:$b")
     }
 
-    private fun write(side: String, node: String, value: String): Boolean = try {
-        FileOutputStream("/sys/class/$side/led/$node").use { it.write(value.toByteArray()) }
-        true
-    } catch (e: IOException) {
-        false
+    /** Direct sysfs write; if the file is not writable for apps, fall back to the system PServerBinder service. */
+    private fun write(side: String, node: String, value: String): Boolean {
+        val path = "/sys/class/$side/led/$node"
+        if (side !in viaService) {
+            try {
+                FileOutputStream(path).use { it.write(value.toByteArray()) }
+                return true
+            } catch (e: IOException) {
+                viaService += side
+            }
+        }
+        return runAsSystem("echo $value > $path")
+    }
+
+    /** Same call the AYN/Retroid firmware exposes to its own apps: PServerBinder runs a shell command with system rights. */
+    private fun runAsSystem(command: String): Boolean {
+        val binder = pServer ?: return false
+        val data = Parcel.obtain()
+        val reply = Parcel.obtain()
+        return try {
+            data.writeStringArray(arrayOf(command, "1"))
+            binder.transact(0, data, reply, IBinder.FLAG_ONEWAY)
+            true
+        } catch (e: Exception) {
+            false
+        } finally {
+            data.recycle()
+            reply.recycle()
+        }
     }
 
     /** LEDs look dull with true colours: double the saturation and lift the brightness (sqrt curve). */

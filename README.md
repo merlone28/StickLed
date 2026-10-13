@@ -21,13 +21,13 @@ StickLed writes straight to the LED driver files `/sys/class/sn3112l/led/` (left
 
 | Console | LED driver on Android | Status in StickLed |
 |---|---|---|
-| AYN Odin 2 Portal | `sn3112l` + `sn3112r` | Tested, works |
+| AYN Odin 2 Portal | `sn3112l` + `sn3112r` | Tested, works (direct write and system-service fallback) |
 | AYN Odin 2 Portal Pro | same | Untested |
-| AYN Thor | same (two zones per stick) | Untested, only the first zone is driven |
+| AYN Thor | same (two zones per stick) | Untested, both zones are driven |
 | Retroid Pocket 5 | same | Untested |
 | Retroid Pocket Mini V2 | same (left stick only) | Untested, only the left stick has LEDs |
 
-On the Portal the files can be written by any app. On the other consoles they may only be writable through a system service (Bifrost sends its commands to `PServerBinder`). If so, StickLed shows "Impossibile controllare i LED su questo dispositivo" and stops; nothing is changed. Consoles without these files (other brands) are not supported.
+On the Portal the files can be written by any app. On other consoles they may only be writable through a system service, so StickLed first tries to write the files directly and, if that fails, sends the same command to the firmware's `PServerBinder` service (the one Bifrost uses). Both paths were tested on the Portal; on the other consoles neither has been tested. If neither path is available, StickLed shows "Impossibile controllare i LED su questo dispositivo" and stops; nothing is changed. Consoles without these files (other brands) are not supported.
 
 Own a different console? Open an issue with the output of:
 ```
