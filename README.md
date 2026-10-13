@@ -14,7 +14,17 @@ Android app for the AYN Odin 2 family: the joystick LEDs follow the colours of t
 - Writes `1-R:G:B` to `/sys/class/sn3112l/led/brightness` (left) and `/sys/class/sn3112r/led/brightness` (right), the same files the Odin settings app uses. Brightness follows the level set in the Odin settings.
 - On stop, the colours saved in the Odin settings are restored.
 
-Tested on an Odin 2 Portal (Android 13). Other devices are untested.
+## Compatibility
+Tested only on an **AYN Odin 2 Portal** (Android 13).
+
+StickLed writes straight to the Portal's LED driver files (`/sys/class/sn3112l/led/` and `/sys/class/sn3112r/led/`), so it only works on devices that have them. Other AYN consoles (Odin 2, Odin 2 Mini, Odin 3, Thor) may use the same driver but are untested. On consoles without those files (for example Retroid Pocket) the app shows "Impossibile controllare i LED su questo dispositivo" and stops; nothing is changed.
+
+Own a different console? Open an issue with the output of:
+```
+adb shell ls -R /sys/class/leds
+adb shell settings list system
+```
+and support can be added.
 
 ## Build
 ```
