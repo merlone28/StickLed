@@ -3,7 +3,7 @@
 Android app for the AYN Odin 2 family: the joystick LEDs follow the colours of the screen (left half of the screen -> left stick, right half -> right stick).
 
 ## Download
-[StickLed-v1.0.apk](https://github.com/merlone28/StickLed/releases/latest/download/StickLed-v1.0.apk) (all versions: [Releases](https://github.com/merlone28/StickLed/releases))
+[StickLed.apk](https://github.com/merlone28/StickLed/releases/latest/download/StickLed.apk) (all versions: [Releases](https://github.com/merlone28/StickLed/releases))
 
 1. Download the APK on the console and install it (allow installs from unknown sources if asked).
 2. Open StickLed, press **Start** and accept the screen recording prompt.
