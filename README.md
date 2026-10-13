@@ -17,7 +17,17 @@ Android app for the AYN Odin 2 family: the joystick LEDs follow the colours of t
 ## Compatibility
 Tested only on an **AYN Odin 2 Portal** (Android 13).
 
-StickLed writes straight to the Portal's LED driver files (`/sys/class/sn3112l/led/` and `/sys/class/sn3112r/led/`), so it only works on devices that have them. Other AYN consoles (Odin 2, Odin 2 Mini, Odin 3, Thor) may use the same driver but are untested. On consoles without those files (for example Retroid Pocket) the app shows "Impossibile controllare i LED su questo dispositivo" and stops; nothing is changed.
+StickLed writes straight to the LED driver files `/sys/class/sn3112l/led/` (left stick) and `/sys/class/sn3112r/led/` (right stick). According to the source of [Bifrost](https://github.com/Pollux-MoonBench/Bifrost), another Android LED app, these same files are used by other handhelds too:
+
+| Console | LED driver on Android | Status in StickLed |
+|---|---|---|
+| AYN Odin 2 Portal | `sn3112l` + `sn3112r` | Tested, works |
+| AYN Odin 2 Portal Pro | same | Untested |
+| AYN Thor | same (two zones per stick) | Untested, only the first zone is driven |
+| Retroid Pocket 5 | same | Untested |
+| Retroid Pocket Mini V2 | same (left stick only) | Untested, only the left stick has LEDs |
+
+On the Portal the files can be written by any app. On the other consoles they may only be writable through a system service (Bifrost sends its commands to `PServerBinder`). If so, StickLed shows "Impossibile controllare i LED su questo dispositivo" and stops; nothing is changed. Consoles without these files (other brands) are not supported.
 
 Own a different console? Open an issue with the output of:
 ```
